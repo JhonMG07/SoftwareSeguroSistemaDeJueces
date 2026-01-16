@@ -1,6 +1,8 @@
 import { MetricsOverview } from "@/components/admin/metrics-overview";
 import { TokenStats } from "@/components/admin/token-stats";
 import { RecentLogs } from "@/components/admin/recent-logs";
+import { JudgeStats } from "@/components/admin/judge-stats";
+import { CaseStats } from "@/components/admin/case-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Shield } from "lucide-react";
 
@@ -51,8 +53,14 @@ export default function AdminDashboardPage() {
             {/* Métricas principales */}
             <MetricsOverview />
 
-            {/* Grid de dos columnas */}
+            {/* Grid de cuatro columnas: Jueces, Casos, Tokens, Logs */}
             <div className="grid gap-6 lg:grid-cols-2">
+                {/* Estadísticas de jueces activos */}
+                <JudgeStats />
+
+                {/* Estadísticas de casos */}
+                <CaseStats />
+
                 {/* Estadísticas de tokens */}
                 <TokenStats />
 
@@ -65,13 +73,29 @@ export default function AdminDashboardPage() {
                 <CardContent className="flex items-start gap-3 pt-6">
                     <AlertTriangle className="h-5 w-5 text-slate-500 mt-0.5" />
                     <div className="text-sm text-slate-600 dark:text-slate-400">
-                        <p className="font-medium mb-1">Limitaciones del rol de auditor:</p>
-                        <ul className="list-disc list-inside space-y-1">
-                            <li>No es posible ver contenido de casos judiciales</li>
-                            <li>No es posible ver identidades reales de jueces o secretarios</li>
-                            <li>No es posible acceder al Identity Vault</li>
-                            <li>Los datos se actualizan periódicamente (no en tiempo real)</li>
-                        </ul>
+                        <p className="font-medium mb-1">Rol de Auditor - Acceso limitado:</p>
+                        <div className="grid md:grid-cols-2 gap-4 mt-2">
+                            <div>
+                                <p className="font-medium text-green-700 dark:text-green-400 mb-1">Puede ver:</p>
+                                <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400">
+                                    <li>Numero de jueces activos por dia</li>
+                                    <li>Cantidad de casos resueltos</li>
+                                    <li>Accesos al sistema (logs)</li>
+                                    <li>Tokens emitidos/usados/expirados</li>
+                                    <li>Metricas agregadas del sistema</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <p className="font-medium text-red-700 dark:text-red-400 mb-1">NO puede ver:</p>
+                                <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400">
+                                    <li>Contenido de casos judiciales</li>
+                                    <li>Identidades reales de jueces</li>
+                                    <li>Identidades de secretarias</li>
+                                    <li>Identity Vault</li>
+                                    <li>Dictamenes ni su contenido</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

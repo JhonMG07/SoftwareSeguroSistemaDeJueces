@@ -76,7 +76,7 @@ export async function proxy(request: NextRequest) {
 
   // Proteger rutas de jueces
   if (pathname.startsWith('/judge')) {
-    if (profile?.role !== 'judge' && profile?.role !== 'secretary') {
+    if (profile?.role !== 'judge') {
       const url = request.nextUrl.clone();
       url.pathname = '/';
       return NextResponse.redirect(url);

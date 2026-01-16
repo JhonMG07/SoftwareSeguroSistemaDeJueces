@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { IdentityVaultService } from '@/lib/vault/identity-service';
+import { EphemeralCredentialsService } from '@/lib/services/ephemeral-credentials';
 import { Resend } from 'resend';
 import { revalidatePath } from 'next/cache';
 
@@ -62,13 +63,16 @@ export async function assignJudgeAction(caseId: string) {
             anon_actor_id: judgeAnonId,
             role: 'judge',
             status: 'active',
-            assigned_by: user.id // Fix: Required field
+            assigned_by: user.id
         });
 
         if (assignError) {
             console.error('ASSIGNMENT ERROR:', assignError);
             throw new Error(`Error asignando juez: ${assignError.message}`);
         }
+
+        // Generate Ephemeral Credentials for the judge
+        const credentials = await EphemeralCredentialsService.generate(caseId, judgeAnonId);
 
         // 5. Actualizar estado del caso a 'asignado'
         const { error: updateError } = await supabase
@@ -80,25 +84,21 @@ export async function assignJudgeAction(caseId: string) {
             throw new Error(`Error actualizando estado: ${updateError.message}`);
         }
 
-    } catch (vaultError: any) {
-        throw new Error(`Error en asignación: ${vaultError.message}`);
-    }
-
-    // 6. Enviar Email
-    try {
+        // 6. Enviar Email
         await resend.emails.send({
             from: 'Sistema de Jueces <onboarding@resend.dev>',
-            to: 'jmeza050@gmail.com', // Demo email
+            to: 'juanjobabu@gmail.com', // Demo email
             subject: `Nuevo Caso Asignado: ${caseData.title}`,
             html: `
         <h1>Nuevo Caso Asignado</h1>
         <p>Se le ha asignado un nuevo caso en el sistema.</p>
-        <p>Clave de Acceso: <strong>${caseData.access_token}</strong></p>
+        <p>Clave de Acceso: <strong>${credentials.password}</strong></p>
         <p><em>Autogenerado por Sistema Judicial</em></p>
       `
         });
-    } catch (emailError) {
-        console.error('Error enviando email:', emailError);
+
+    } catch (vaultError: any) {
+        throw new Error(`Error en asignación: ${vaultError.message}`);
     }
 
     revalidatePath('/dashboard/secretary');

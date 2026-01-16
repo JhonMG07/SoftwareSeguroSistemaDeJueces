@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, Shield } from "lucide-react";
+import { Users, FileText, Shield, Gavel } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
 import { AppNavbar } from "@/components/app-navbar";
@@ -72,6 +72,22 @@ async function DashboardContent() {
               </CardHeader>
               <CardContent>
                 <CardDescription>Crear y asignar casos judiciales</CardDescription>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/supreme-court/resolutions">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-slate-200 dark:border-slate-700">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <Gavel className="h-6 w-6 text-purple-700 dark:text-purple-300" />
+                  </div>
+                  <CardTitle className="text-lg">Resoluciones</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>Ver dictámenes emitidos por los jueces</CardDescription>
               </CardContent>
             </Card>
           </Link>

@@ -38,7 +38,28 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      router.push("/");
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // Obtener rol para redirigir correctamente
+        const { data: profile } = await supabase
+          .from('users_profile')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.role === 'secretary') {
+          router.push("/dashboard/secretary");
+        } else if (profile?.role === 'judge') {
+          router.push("/judge/cases");
+        } else if (profile?.role === 'super_admin') {
+          router.push("/supreme-court");
+        } else {
+          router.push("/");
+        }
+      } else {
+        router.push("/");
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

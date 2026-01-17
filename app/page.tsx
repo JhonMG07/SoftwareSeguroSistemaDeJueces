@@ -29,7 +29,7 @@ export default async function HomePage() {
   } else if (profile?.role === 'judge') {
     redirect('/judge/cases');
   } else if (profile?.role === 'secretary') {
-    redirect('/judge/cases'); // Secretarios también van a la misma vista por ahora
+    redirect('/dashboard/secretary');
   }
 
   // Rol desconocido, redirigir a login

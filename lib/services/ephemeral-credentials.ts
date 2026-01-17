@@ -134,6 +134,42 @@ export class EphemeralCredentialsService {
     }
 
     /**
+     * Valida contraseña y retorna el token de acceso asociado
+     * @param caseId - ID del caso
+     * @param password - Contraseña a validar
+     * @returns Token de acceso (JWT) si la contraseña es válida, null si no
+     */
+    static async validatePassword(caseId: string, password: string): Promise<string | null> {
+        try {
+            // 1. Buscar credenciales activas para el caso
+            const { data: credentials, error } = await supabaseAdmin
+                .from('ephemeral_credentials')
+                .select('temp_password_hash, access_token')
+                .eq('case_id', caseId)
+                .gt('expires_at', new Date().toISOString()) // Solo no expiradas
+                .order('created_at', { ascending: false });
+
+            if (error || !credentials || credentials.length === 0) {
+                return null;
+            }
+
+            // 2. Verificar contraseña (puede haber múltiples credenciales activas, probar reciente primero)
+            for (const cred of credentials) {
+                const match = await bcrypt.compare(password, cred.temp_password_hash);
+                if (match) {
+                    return cred.access_token;
+                }
+            }
+
+            return null;
+
+        } catch (error) {
+            console.error('[EphemeralCredentials] Password validation error:', error);
+            return null;
+        }
+    }
+
+    /**
      * Marca credenciales como usadas
      * @param token - Token a marcar como usado
      */
@@ -149,27 +185,22 @@ export class EphemeralCredentialsService {
      * @param length - Longitud de la contraseña
      * @returns Contraseña generada
      */
-    private static generateSecurePassword(length: number): string {
-        const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-        let password = '';
-        const randomValues = crypto.randomBytes(length);
+    private static generateSecurePassword(length: number = 16): string {
+        const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Eliminamos I, 1, O, 0 por legibilidad
+        let token = '';
 
-        for (let i = 0; i < length; i++) {
-            password += charset[randomValues[i] % charset.length];
+        // Generamos 4 bloques de 4 caracteres
+        for (let b = 0; b < 4; b++) {
+            let block = '';
+            const randomValues = crypto.randomBytes(4);
+            for (let i = 0; i < 4; i++) {
+                block += charset[randomValues[i] % charset.length];
+            }
+            token += block;
+            if (b < 3) token += '-';
         }
 
-        // Asegurar que tenga al menos una mayúscula, minúscula, número y símbolo
-        const hasUpper = /[A-Z]/.test(password);
-        const hasLower = /[a-z]/.test(password);
-        const hasNumber = /[0-9]/.test(password);
-        const hasSymbol = /[!@#$%^&*]/.test(password);
-
-        if (!hasUpper || !hasLower || !hasNumber || !hasSymbol) {
-            // Regenerar si no cumple con los requisitos
-            return this.generateSecurePassword(length);
-        }
-
-        return password;
+        return token;
     }
 
     /**

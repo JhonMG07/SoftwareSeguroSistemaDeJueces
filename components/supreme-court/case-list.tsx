@@ -32,15 +32,17 @@ export function CaseList({ cases, onCreateCase, onViewCase, onAssignCase, loadin
   })
 
   const getStatusBadge = (status: CaseStatus) => {
-    const variants: Record<CaseStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-      pending: { variant: "secondary", label: "Pendiente" },
-      in_review: { variant: "default", label: "En Revisión" },
-      resolved: { variant: "outline", label: "Resuelto" },
-      archived: { variant: "secondary", label: "Archivado" },
-      rejected: { variant: "destructive", label: "Rechazado" }
+    // Map Spanish statuses
+    const config: Record<CaseStatus, { className: string; label: string }> = {
+      asignado: { className: "bg-blue-100 text-blue-800 border-blue-200", label: "Asignado" },
+      en_revision: { className: "bg-yellow-100 text-yellow-800 border-yellow-200", label: "En Revisión" },
+      dictaminado: { className: "bg-purple-100 text-purple-800 border-purple-200", label: "Dictaminado" },
+      cerrado: { className: "bg-green-100 text-green-800 border-green-200", label: "Cerrado" }
     }
-    const config = variants[status] || { variant: "secondary", label: status || "Pendiente" }
-    return <Badge variant={config.variant}>{config.label}</Badge>
+
+    const badgeConfig = config[status] || { className: "bg-slate-100 text-slate-800", label: status }
+
+    return <Badge variant="outline" className={badgeConfig.className}>{badgeConfig.label}</Badge>
   }
 
   const getPriorityBadge = (priority: CasePriority) => {
@@ -110,11 +112,10 @@ export function CaseList({ cases, onCreateCase, onViewCase, onAssignCase, loadin
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los estados</SelectItem>
-            <SelectItem value="pending">Pendiente</SelectItem>
-            <SelectItem value="in_review">En Revisión</SelectItem>
-            <SelectItem value="resolved">Resuelto</SelectItem>
-            <SelectItem value="archived">Archivado</SelectItem>
-            <SelectItem value="rejected">Rechazado</SelectItem>
+            <SelectItem value="asignado">Asignado</SelectItem>
+            <SelectItem value="en_revision">En Revisión</SelectItem>
+            <SelectItem value="dictaminado">Dictaminado</SelectItem>
+            <SelectItem value="cerrado">Cerrado</SelectItem>
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -173,13 +174,13 @@ export function CaseList({ cases, onCreateCase, onViewCase, onAssignCase, loadin
                       <Button variant="ghost" size="icon" onClick={() => onViewCase(caseItem)} title="Ver detalles">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => onAssignCase(caseItem)}
                         disabled={
-                          caseItem.status === 'archived' || 
-                          caseItem.status === 'resolved' ||
+                          caseItem.status === 'cerrado' ||
+                          caseItem.status === 'dictaminado' ||
                           !!caseItem.assignedJudge  // Deshabilitar si ya está asignado
                         }
                         title={caseItem.assignedJudge ? "Caso ya asignado" : "Asignar juez"}

@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { SessionTimeoutManager } from "@/components/auth/session-timeout-manager";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -20,11 +21,15 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+import { getServerInstanceId } from "@/lib/server-instance";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const serverId = getServerInstanceId();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased`}>
@@ -35,6 +40,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <SessionTimeoutManager serverInstanceId={serverId} />
           <Toaster />
         </ThemeProvider>
       </body>

@@ -122,7 +122,7 @@ export async function submitVerdict(prevState: any, formData: FormData) {
         const { error: updateError } = await supabase
             .from('cases')
             .update({
-                status: 'dictaminado',
+                status: 'resolved',
                 updated_at: new Date().toISOString()
                 // En un sistema real, guardaríamos el dictamen en una tabla encriptada separada
             })

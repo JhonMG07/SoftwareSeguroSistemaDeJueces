@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { RefreshCw, Key, Info } from 'lucide-react';
+import { RefreshCw, Key } from 'lucide-react';
 
 interface DailyTokenStat {
     date: string;
@@ -106,22 +106,7 @@ export default function AdminTokensPage() {
                 </Button>
             </div>
 
-            {/* Info sobre tokens */}
-            <Card className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
-                <CardContent className="flex items-start gap-3 pt-6">
-                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                    <div className="text-sm text-blue-700 dark:text-blue-300">
-                        <p className="font-medium mb-1">Sobre los tokens efímeros:</p>
-                        <p>
-                            Los tokens efímeros son credenciales de un solo uso que se envían a los
-                            jueces para acceder a casos asignados. Esta vista muestra solo
-                            estadísticas agregadas: cuántos tokens se emitieron, cuántos se usaron,
-                            y el tiempo promedio hasta su uso. No se muestra el contenido del token
-                            ni la identidad del usuario asociado.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
+
 
             {/* Filtros de fecha */}
             <Card>

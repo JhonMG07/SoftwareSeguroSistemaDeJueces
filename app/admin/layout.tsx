@@ -1,14 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+
 import { AdminNavbar } from "@/components/admin/admin-navbar";
+import { AdminAuthGuard } from "@/components/admin/admin-auth-guard";
+import { Suspense } from "react";
 
 /**
  * Layout para el panel de administración (auditoría)
  *
  * Protecciones de seguridad:
- * - Verifica autenticación
- * - Verifica rol admin o super_admin
- * - Verifica cuenta activa
+ * - Verifica autenticación (delegado a AdminAuthGuard)
+ * - Verifica rol admin o super_admin (delegado a AdminAuthGuard)
+ * - Verifica cuenta activa (delegado a AdminAuthGuard)
  *
  * El admin solo puede:
  * - Ver logs anonimizados
@@ -20,42 +21,25 @@ import { AdminNavbar } from "@/components/admin/admin-navbar";
  * - Ver contenido de casos
  * - Ver identidades reales
  */
-export default async function AdminLayout({
+export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // No autenticado
-    if (!user) {
-        redirect('/auth/login?redirect=/admin');
-    }
-
-    // Verificar perfil y rol
-    const { data: profile } = await supabase
-        .from('users_profile')
-        .select('role, status')
-        .eq('id', user.id)
-        .single();
-
-    // Sin perfil o cuenta inactiva
-    if (!profile || profile.status !== 'active') {
-        redirect('/unauthorized');
-    }
-
-    // Solo admin, auditor y super_admin pueden acceder
-    if (profile.role !== 'admin' && profile.role !== 'auditor' && profile.role !== 'super_admin') {
-        redirect('/unauthorized');
-    }
-
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-            <AdminNavbar />
+            <Suspense fallback={<div className="h-16 border-b bg-white dark:bg-slate-950 shadow-sm" />}>
+                <AdminNavbar />
+            </Suspense>
+
             <main className="container mx-auto px-6 py-8">
-                {children}
+                <Suspense fallback={<div className="flex items-center justify-center h-64 text-slate-500">Cargando panel de auditoría...</div>}>
+                    <AdminAuthGuard>
+                        {children}
+                    </AdminAuthGuard>
+                </Suspense>
             </main>
+
             <footer className="border-t bg-white dark:bg-slate-950 py-4 mt-auto">
                 <div className="container mx-auto px-6 text-center text-sm text-slate-500">
                     Panel de Auditoría - Sistema de Gestión Judicial

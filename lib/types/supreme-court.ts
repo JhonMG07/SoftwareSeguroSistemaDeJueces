@@ -52,7 +52,7 @@ export interface CreateUserForm {
 // CASE MANAGEMENT TYPES
 // ============================================
 
-export type CaseStatus = 'por_asignar' | 'asignado' | 'en_revision' | 'dictaminado' | 'cerrado'
+export type CaseStatus = 'pending' | 'assigned' | 'in_progress' | 'resolved' | 'archived'
 export type CasePriority = 'low' | 'medium' | 'high' | 'urgent'
 export type Classification = 'public' | 'confidential' | 'secret' | 'top_secret'
 export type CaseType = 'civil' | 'penal' | 'laboral' | 'administrativo'

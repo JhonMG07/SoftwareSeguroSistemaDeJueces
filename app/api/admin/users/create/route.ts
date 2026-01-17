@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { enforcePermission } from '@/lib/abac/evaluator';
 import { ACTIONS } from '@/lib/abac/types';
+import { encrypt } from '@/lib/crypto/encryption';
 
 // POST /api/admin/users/create - Crear nuevo usuario
 export async function POST(request: Request) {
@@ -53,20 +54,19 @@ export async function POST(request: Request) {
 
         const newUserId = newUserAuth.user.id;
 
-        // 5. Crear Perfil en users_profile
-        // Nota: Asegurarse que la tabla users_profile permite servicio de escritura o usar supabaseAdmin
+        // 5. Encriptar datos sensibles y crear Perfil en users_profile
         const { error: profileError } = await supabaseAdmin
             .from('users_profile')
             .insert({
                 id: newUserId,
-                real_name: fullName,
-                email: email,
+                real_name: encrypt(fullName), // 🔐 Encriptado
+                email: encrypt(email),        // 🔐 Encriptado
+                phone: phone ? encrypt(phone) : null, // 🔐 Encriptado
+                department: department || null,
                 role: role,
                 status: 'active',
-                created_at: new Date().toISOString()
-                // department y phone podrían ir en una tabla users_metadata si no caben en profile,
-                // pero asumiremos que el usuario agregará esas columnas si no existen o las ignorará por ahora.
-                // Revisa schema existente si es necesario.
+                created_at: new Date().toISOString(),
+                created_by: requester.id
             });
 
         if (profileError) {

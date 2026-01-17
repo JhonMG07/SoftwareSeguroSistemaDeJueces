@@ -161,7 +161,7 @@ export async function POST(
         await supabaseAdmin
             .from('cases')
             .update({
-                status: 'in_review',
+                status: 'in_progress',
                 updated_at: new Date().toISOString()
             })
             .eq('id', caseId);

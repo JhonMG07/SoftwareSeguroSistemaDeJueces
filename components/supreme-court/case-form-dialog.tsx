@@ -35,7 +35,15 @@ export function CaseFormDialog({ open, onClose, onSubmit }: CaseFormDialogProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(formData)
+    // Establecer automáticamente la fecha de hoy + 1 año como deadline
+    const deadlineDate = new Date()
+    deadlineDate.setFullYear(deadlineDate.getFullYear() + 1)
+    
+    const dataWithDeadline = {
+      ...formData,
+      deadline: deadlineDate
+    }
+    onSubmit(dataWithDeadline)
     onClose()
   }
 
@@ -50,27 +58,15 @@ export function CaseFormDialog({ open, onClose, onSubmit }: CaseFormDialogProps)
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="caseNumber">Número de Caso *</Label>
-              <Input
-                id="caseNumber"
-                placeholder="SC-2024-001"
-                value={formData.caseNumber}
-                onChange={(e) => setFormData({ ...formData, caseNumber: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="deadline">Fecha Límite</Label>
-              <Input
-                id="deadline"
-                type="date"
-                value={formData.deadline ? new Date(formData.deadline).toISOString().split('T')[0] : ''}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value ? new Date(e.target.value) : undefined })}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="caseNumber">Número de Caso *</Label>
+            <Input
+              id="caseNumber"
+              placeholder="SC-2024-001"
+              value={formData.caseNumber}
+              onChange={(e) => setFormData({ ...formData, caseNumber: e.target.value })}
+              required
+            />
           </div>
 
           <div className="space-y-2">

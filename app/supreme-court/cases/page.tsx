@@ -1,213 +1,131 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { CaseList } from "@/components/supreme-court/case-list"
-import { CaseFormDialog } from "@/components/supreme-court/case-form-dialog"
-import { CaseDetailDialog } from "@/components/supreme-court/case-detail-dialog"
-import { AssignCaseDialog } from "@/components/supreme-court/assign-case-dialog"
-import { ArrowLeft } from "lucide-react"
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
 import { ClientNavbar } from "@/components/client-navbar"
-import type { JudicialCase, CreateCaseForm, AssignCaseForm, SystemUser } from "@/lib/types/supreme-court"
-import { toast } from "sonner"
+import { CasesPageClient } from "@/components/supreme-court/cases-page-client"
+import type { JudicialCase, SystemUser } from "@/lib/types/supreme-court"
+import { supabaseAdmin } from "@/lib/supabase/admin"
 
-export default function CasesPage() {
-  const router = useRouter()
-  const [cases, setCases] = useState<JudicialCase[]>([])
-  const [judges, setJudges] = useState<SystemUser[]>([])
-  const [loading, setLoading] = useState(true)
-  const [currentUser, setCurrentUser] = useState<SystemUser | null>(null)
+async function getCases(): Promise<JudicialCase[]> {
+  try {
+    // Fetch cases from database
+    const { data: cases, error } = await supabaseAdmin
+      .from('cases')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [selectedCase, setSelectedCase] = useState<JudicialCase | null>(null)
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
-  const [assigningCase, setAssigningCase] = useState<JudicialCase | null>(null)
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
+    if (error) throw error
 
-  // Cargar casos
-  const fetchCases = async () => {
-    try {
-      const res = await fetch('/api/admin/cases')
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Error al cargar casos')
-      }
-      const data = await res.json()
-      console.log('[Frontend] Cases received:', data.cases)
-      setCases(data.cases || [])
-    } catch (error: any) {
-      console.error('Error fetching cases:', error)
-      toast.error(error.message || 'Error al cargar casos')
-    } finally {
-      setLoading(false)
-    }
-  }
+    // Enrich with assignment data
+    const enrichedCases = await Promise.all(
+      (cases || []).map(async (caseItem) => {
+        const { data: assignment } = await supabaseAdmin
+          .from('case_assignments')
+          .select('anon_actor_id')
+          .eq('case_id', caseItem.id)
+          .maybeSingle()
 
-  // Cargar jueces para asignación
-  const fetchJudges = async () => {
-    try {
-      const res = await fetch('/api/admin/users')
-      if (res.ok) {
-        const data = await res.json()
-        setJudges((data.users || []).filter((u: SystemUser) => u.role === 'judge'))
-      }
-    } catch (error) {
-      console.error('Error fetching judges:', error)
-    }
-  }
-
-  // Cargar usuario actual
-  const fetchCurrentUser = async () => {
-    try {
-      const res = await fetch('/api/auth/me')
-      if (res.ok) {
-        const data = await res.json()
-        setCurrentUser(data.user)
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error)
-    }
-  }
-
-  useEffect(() => {
-    fetchCases()
-    fetchJudges()
-    fetchCurrentUser()
-  }, [])
-
-  const handleCreateCase = async (data: CreateCaseForm) => {
-    try {
-      const res = await fetch('/api/admin/cases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        return {
+          id: caseItem.id,
+          caseNumber: caseItem.case_number,
+          title: caseItem.title,
+          description: caseItem.description,
+          status: caseItem.status,
+          priority: caseItem.priority,
+          classification: caseItem.classification,
+          createdAt: caseItem.created_at,
+          updatedAt: caseItem.updated_at,
+          deadline: caseItem.deadline,
+          createdBy: caseItem.created_by,
+          caseType: caseItem.case_type,
+          assignedJudgeId: assignment?.anon_actor_id || null,
+          assignedJudge: assignment?.anon_actor_id ? {
+            id: assignment.anon_actor_id,
+            fullName: `Juez-${assignment.anon_actor_id.substring(0, 8)}`,
+            email: '',
+            role: 'judge'
+          } : undefined
+        }
       })
+    )
 
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Error al crear caso')
-      }
+    return enrichedCases
+  } catch (error) {
+    console.error('Error fetching cases:', error)
+    return []
+  }
+}
 
-      toast.success('Caso creado exitosamente')
-      fetchCases() // Recargar lista
-    } catch (error: any) {
-      console.error('Error creating case:', error)
-      toast.error(error.message || 'Error al crear caso')
-    }
+async function getJudges(): Promise<Pick<SystemUser, 'id' | 'fullName' | 'email'>[]> {
+  try {
+    const { data: judges, error } = await supabaseAdmin
+      .from('users_profile')
+      .select('id, real_name, email')
+      .eq('role', 'judge')
+      .eq('status', 'active')
+
+    if (error) throw error
+
+    return (judges || []).map(judge => ({
+      id: judge.id,
+      fullName: judge.real_name,
+      email: judge.email
+    }))
+  } catch (error) {
+    console.error('Error fetching judges:', error)
+    return []
+  }
+}
+
+async function getCurrentUser() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/sign-in')
   }
 
-  const handleViewCase = (caseItem: JudicialCase) => {
-    setSelectedCase(caseItem)
-    setIsDetailDialogOpen(true)
-  }
+  const { data: profile } = await supabaseAdmin
+    .from('users_profile')
+    .select('real_name')
+    .eq('id', user.id)
+    .single()
 
-  const handleAssignCase = (caseItem: JudicialCase) => {
-    setAssigningCase(caseItem)
-    setIsAssignDialogOpen(true)
-  }
+  return profile?.real_name || 'Usuario'
+}
 
-  const handleSubmitAssignment = async (data: AssignCaseForm) => {
-    try {
-      const res = await fetch(`/api/admin/cases/${data.caseId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          judgeId: data.judgeId, 
-          random: data.random,
-          notes: data.notes 
-        })
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Error al asignar caso')
-      }
-
-      const result = await res.json()
-
-      // Mostrar credenciales generadas
-      if (result.credentials) {
-        toast.success(
-          <div>
-            <p className="font-semibold">Caso asignado a {result.judgeName}</p>
-            <p className="text-xs mt-1">Email: {result.credentials.email}</p>
-            <p className="text-xs">Password: {result.credentials.password}</p>
-            <p className="text-xs text-muted-foreground">Credenciales generadas correctamente</p>
-          </div>,
-          { duration: 10000 }
-        )
-      } else {
-        toast.success(`Caso asignado exitosamente a ${result.judgeName || 'juez'}`)
-      }
-
-      setIsAssignDialogOpen(false)
-      setAssigningCase(null)
-      
-      // Esperar un momento antes de recargar para dar tiempo al backend
-      setTimeout(() => {
-        fetchCases() // Recargar para ver el juez asignado
-      }, 500)
-      
-    } catch (error: any) {
-      console.error('Error assigning case:', error)
-      toast.error(error.message || 'Error al asignar caso')
-    }
-  }
+async function CasesContent() {
+  const [cases, judges, currentUserName] = await Promise.all([
+    getCases(),
+    getJudges(),
+    getCurrentUser()
+  ])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <ClientNavbar displayName={currentUser?.fullName || 'Usuario'} />
+    <>
+      <ClientNavbar displayName={currentUserName} />
+      <CasesPageClient 
+        initialCases={cases} 
+        judges={judges}
+        currentUserName={currentUserName}
+      />
+    </>
+  )
+}
 
-      {/* Header */}
-      <header className="border-b bg-white dark:bg-slate-900 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/supreme-court")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Gestión de Casos</h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Sistema de la Suprema Corte</p>
-            </div>
+export default function CasesPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 dark:border-white mx-auto mb-4"></div>
+            <p className="text-slate-600 dark:text-slate-400">Cargando casos...</p>
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        <CaseList
-          cases={cases}
-          onCreateCase={() => setIsCreateDialogOpen(true)}
-          onViewCase={handleViewCase}
-          onAssignCase={handleAssignCase}
-          loading={loading}
-        />
-      </main>
-
-      {/* Dialogs */}
-      <CaseFormDialog
-        open={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-        onSubmit={handleCreateCase}
-      />
-
-      <CaseDetailDialog
-        open={isDetailDialogOpen}
-        onClose={() => setIsDetailDialogOpen(false)}
-        caseItem={selectedCase}
-      />
-
-      <AssignCaseDialog
-        open={isAssignDialogOpen}
-        onClose={() => {
-          setIsAssignDialogOpen(false)
-          setAssigningCase(null)
-        }}
-        onSubmit={handleSubmitAssignment}
-        caseItem={assigningCase}
-        judges={judges}
-      />
+      }>
+        <CasesContent />
+      </Suspense>
     </div>
   )
 }

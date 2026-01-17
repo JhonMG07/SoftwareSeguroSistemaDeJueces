@@ -3,6 +3,77 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { enforcePermission } from '@/lib/abac/evaluator';
 import { ACTIONS } from '@/lib/abac/types';
+import { encrypt, decrypt } from '@/lib/crypto/encryption';
+
+// GET /api/admin/users/[id] - Obtener datos de un usuario (desencriptados para edición)
+export async function GET(
+    request: Request,
+    props: { params: Promise<{ id: string }> }
+) {
+    const params = await props.params;
+    const userId = params.id;
+    const supabase = await createClient();
+
+    const { data: { user: requester } } = await supabase.auth.getUser();
+    if (!requester) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        await enforcePermission(requester.id, ACTIONS.USER_EDIT, 'users', { resourceId: userId });
+
+        // Obtener datos del usuario
+        const { data: user, error } = await supabaseAdmin
+            .from('users_profile')
+            .select(`
+                id,
+                real_name,
+                email,
+                phone,
+                role,
+                status,
+                department,
+                created_at,
+                user_attributes!user_attributes_user_id_fkey (
+                    abac_attributes (
+                        id,
+                        name,
+                        category,
+                        level,
+                        description
+                    )
+                )
+            `)
+            .eq('id', userId)
+            .single();
+
+        if (error || !user) {
+            return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+        }
+
+        // Desencriptar datos sensibles para edición
+        const decryptedUser = {
+            id: user.id,
+            fullName: decrypt(user.real_name),
+            email: decrypt(user.email),
+            phone: user.phone ? decrypt(user.phone) : '',
+            role: user.role,
+            status: user.status,
+            department: user.department || '',
+            createdAt: user.created_at,
+            attributes: user.user_attributes?.map((ua: any) => ua.abac_attributes).filter(Boolean) || []
+        };
+
+        return NextResponse.json({ user: decryptedUser });
+
+    } catch (error: any) {
+        if (error.message?.includes('Permiso denegado')) {
+            return NextResponse.json({ error: error.message }, { status: 403 });
+        }
+        console.error('[GET /api/admin/users/[id]] Error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
 
 // PATCH /api/admin/users/[id] - Editar usuario
 export async function PATCH(
@@ -39,13 +110,13 @@ export async function PATCH(
         const body = await request.json();
         const { fullName, email, role, attributes, department, phone } = body;
 
-        // 3. Actualizar Perfil
+        // 3. Actualizar Perfil (encriptando datos sensibles)
         const updateData: any = {};
-        if (fullName) updateData.real_name = fullName;
-        if (email) updateData.email = email;
+        if (fullName) updateData.real_name = encrypt(fullName); // 🔐
+        if (email) updateData.email = encrypt(email); // 🔐
+        if (phone) updateData.phone = encrypt(phone); // 🔐
         if (role) updateData.role = role;
         if (department) updateData.department = department;
-        if (phone) updateData.phone = phone;
 
         if (Object.keys(updateData).length > 0) {
             const { error: profileError } = await supabaseAdmin

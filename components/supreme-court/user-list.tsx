@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Table,
   TableBody,
@@ -10,21 +11,30 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Edit, MoreHorizontal, Power, Shield, UserPlus } from "lucide-react"
-import type { SystemUser } from "@/lib/types/supreme-court"
+
+import { Edit, Power, Shield, UserPlus } from "lucide-react"
+import { getUserPseudonym, getPseudonymInitials, getUserColor } from "@/lib/utils/pseudonym"
+
+// Tipo para usuario en lista (sin datos sensibles)
+interface AnonymousUser {
+  id: string
+  role: string
+  status: "active" | "inactive" | "suspended"
+  department: string
+  createdAt: string | Date
+  attributes: Array<{
+    id: string
+    name: string
+    category: string
+    description: string
+    level: number
+  }>
+}
 
 interface UserListProps {
-  users: SystemUser[]
+  users: AnonymousUser[]
   onCreateUser: () => void
-  onEditUser: (user: SystemUser) => void
+  onEditUser: (user: AnonymousUser) => void
   onToggleStatus: (userId: string, currentStatus: "active" | "inactive" | "suspended") => void
 }
 
@@ -89,8 +99,7 @@ export function UserList({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nombre Completo</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Usuario (Anónimo)</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Departamento</TableHead>
               <TableHead>Estado</TableHead>
@@ -99,47 +108,61 @@ export function UserList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.fullName}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{user.department}</TableCell>
-                <TableCell>{getStatusBadge(user.status)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Shield className="h-4 w-4" />
-                    <span className="text-xs">{user.attributes?.length || 0}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => onEditUser(user)}
-                      disabled={user.email === 'admin@cortesupremacr.go.ec'}
-                      title={user.email === 'admin@cortesupremacr.go.ec' ? 'No se puede editar el super admin principal' : 'Editar usuario'}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost" 
-                      size="icon"
-                      className={user.status === 'active' ? 'text-green-600' : 'text-slate-400'}
-                      onClick={() => onToggleStatus(
-                        user.id, 
-                        user.status === 'active' ? 'inactive' : 'active'
-                      )}
-                      disabled={user.email === 'admin@cortesupremacr.go.ec'}
-                      title={user.email === 'admin@cortesupremacr.go.ec' ? 'No se puede desactivar el super admin principal' : 'Cambiar estado'}
-                    >
-                      <Power className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {users.map((user) => {
+              const pseudonym = getUserPseudonym(user.id, user.role)
+              const initials = getPseudonymInitials(pseudonym)
+              const color = getUserColor(user.id)
+              
+              return (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8" style={{ backgroundColor: color }}>
+                        <AvatarFallback className="text-white text-xs font-semibold" style={{ backgroundColor: color }}>
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{pseudonym}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  <TableCell>{user.department || '-'}</TableCell>
+                  <TableCell>{getStatusBadge(user.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Shield className="h-4 w-4" />
+                      <span className="text-xs">{user.attributes?.length || 0}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => onEditUser(user)}
+                        disabled={user.role === 'super_admin'}
+                        title={user.role === 'super_admin' ? 'No se puede editar el super admin principal' : 'Editar usuario'}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost" 
+                        size="icon"
+                        className={user.status === 'active' ? 'text-green-600' : 'text-slate-400'}
+                        onClick={() => onToggleStatus(
+                          user.id, 
+                          user.status === 'active' ? 'inactive' : 'active'
+                        )}
+                        disabled={user.role === 'super_admin'}
+                        title={user.role === 'super_admin' ? 'No se puede desactivar el super admin principal' : 'Cambiar estado'}
+                      >
+                        <Power className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>

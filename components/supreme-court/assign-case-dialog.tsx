@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { JudicialCase, AssignCaseForm, SystemUser } from "@/lib/types/supreme-court"
+import { getUserPseudonym } from "@/lib/utils/pseudonym"
 
 interface AssignCaseDialogProps {
   open: boolean
   onClose: () => void
   onSubmit: (data: AssignCaseForm) => void
   caseItem: JudicialCase | null
-  judges: SystemUser[]
+  judges: Pick<SystemUser, 'id' | 'fullName' | 'email'>[]
 }
 
 export function AssignCaseDialog({ open, onClose, onSubmit, caseItem, judges }: AssignCaseDialogProps) {
@@ -92,11 +93,14 @@ export function AssignCaseDialog({ open, onClose, onSubmit, caseItem, judges }: 
                 <SelectValue placeholder="Seleccione un juez" />
               </SelectTrigger>
               <SelectContent>
-                {judges.map((judge) => (
-                  <SelectItem key={judge.id} value={judge.id}>
-                    {judge.fullName} ({judge.email})
-                  </SelectItem>
-                ))}
+                {judges.map((judge) => {
+                  const pseudonym = getUserPseudonym(judge.id, 'judge')
+                  return (
+                    <SelectItem key={judge.id} value={judge.id}>
+                      {pseudonym}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">

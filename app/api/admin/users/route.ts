@@ -17,15 +17,14 @@ export async function GET(request: Request) {
         // Verificar permiso ABAC
         await enforcePermission(user.id, ACTIONS.USER_LIST, 'users');
 
-        // Obtener usuarios con sus atributos
+        // Obtener usuarios con sus atributos (SIN datos sensibles)
         const { data: users, error } = await supabase
             .from('users_profile')
             .select(`
                 id, 
-                real_name, 
-                email, 
                 role, 
-                status, 
+                status,
+                department,
                 created_at,
                 user_attributes!user_attributes_user_id_fkey (
                     abac_attributes (
@@ -37,25 +36,21 @@ export async function GET(request: Request) {
                     )
                 )
             `)
-            .order('real_name', { ascending: true });
+            .order('created_at', { ascending: false });
 
         if (error) {
             console.error('[API] Error fetching users:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // Transformar datos para que coincidan con el tipo SystemUser
+        // Transformar datos - NO incluir real_name ni email para proteger identidad
         const formattedUsers = users?.map((u: any) => ({
             id: u.id,
-            email: u.email,
-            fullName: u.real_name,
             role: u.role,
             status: u.status,
+            department: u.department || '',
             createdAt: u.created_at,
-            attributes: u.user_attributes?.map((ua: any) => ua.abac_attributes).filter(Boolean) || [],
-            department: '', // Si tienes este campo en la tabla, agrégalo al select
-            phone: '', // Si tienes este campo en la tabla, agrégalo al select
-            createdBy: '' // Si tienes este campo, agrégalo
+            attributes: u.user_attributes?.map((ua: any) => ua.abac_attributes).filter(Boolean) || []
         })) || [];
 
         return NextResponse.json({ users: formattedUsers });

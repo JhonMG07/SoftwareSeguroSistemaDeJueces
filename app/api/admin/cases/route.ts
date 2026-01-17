@@ -140,7 +140,7 @@ export async function POST(request: Request) {
                 case_number: caseNumber,
                 title,
                 description,
-                case_type: caseType,
+                case_type: caseType.toString().toLowerCase().trim(),
                 priority,
                 classification,
                 status: 'pending',

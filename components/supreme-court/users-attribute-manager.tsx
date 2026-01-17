@@ -4,16 +4,34 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Search, Shield, User2, Users } from "lucide-react"
 import { AttributeAssignmentDialog } from "./attribute-assignment-dialog"
 import type { SystemUser } from "@/lib/types/supreme-court"
+import { getUserPseudonym, getPseudonymInitials, getUserColor } from "@/lib/utils/pseudonym"
+
+// Tipo para usuario anónimo en lista
+interface AnonymousUser {
+  id: string
+  role: string
+  status: "active" | "inactive" | "suspended"
+  department: string
+  createdAt: string | Date
+  attributes: Array<{
+    id: string
+    name: string
+    category: string
+    description: string
+    level: number
+  }>
+}
 
 interface UsersAttributeManagerProps {
   onRefresh?: () => void
 }
 
 export function UsersAttributeManager({ onRefresh }: UsersAttributeManagerProps) {
-  const [users, setUsers] = useState<SystemUser[]>([])
+  const [users, setUsers] = useState<AnonymousUser[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null)
@@ -22,7 +40,6 @@ export function UsersAttributeManager({ onRefresh }: UsersAttributeManagerProps)
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      // En producción, hacer query real a /api/admin/users
       const res = await fetch('/api/admin/users')
       if (res.ok) {
         const data = await res.json()
@@ -39,9 +56,20 @@ export function UsersAttributeManager({ onRefresh }: UsersAttributeManagerProps)
     fetchUsers()
   }, [])
 
-  const handleManageAttributes = (user: SystemUser) => {
-    setSelectedUser(user)
-    setDialogOpen(true)
+  const handleManageAttributes = async (user: AnonymousUser) => {
+    try {
+      // Cargar datos completos del usuario para el diálogo
+      const res = await fetch(`/api/admin/users/${user.id}`)
+      if (!res.ok) {
+        console.error('Error loading user data')
+        return
+      }
+      const { user: fullUser } = await res.json()
+      setSelectedUser(fullUser)
+      setDialogOpen(true)
+    } catch (error) {
+      console.error('Error loading user:', error)
+    }
   }
 
   const handleDialogClose = () => {
@@ -62,10 +90,12 @@ export function UsersAttributeManager({ onRefresh }: UsersAttributeManagerProps)
     }
   }
 
-  const filteredUsers = users.filter(user =>
-    user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filtrar por pseudónimo o departamento (ya no tenemos acceso a nombre real ni email)
+  const filteredUsers = users.filter(user => {
+    const pseudonym = getUserPseudonym(user.id, user.role)
+    return pseudonym.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           user.department?.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   return (
     <div className="space-y-4">
@@ -85,7 +115,7 @@ export function UsersAttributeManager({ onRefresh }: UsersAttributeManagerProps)
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nombre o email..."
+          placeholder="Buscar por pseudónimo o departamento..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -110,41 +140,49 @@ export function UsersAttributeManager({ onRefresh }: UsersAttributeManagerProps)
           </div>
         ) : (
           <div className="divide-y">
-            {filteredUsers.map((user) => (
-              <div
-                key={user.id}
-                className="p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                    <User2 className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900 dark:text-slate-100">
-                        {user.fullName}
-                      </span>
-                      {getRoleBadge(user.role)}
-                      {user.status !== 'active' && (
-                        <Badge variant="destructive">Inactivo</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleManageAttributes(user)}
+            {filteredUsers.map((user) => {
+              const pseudonym = getUserPseudonym(user.id, user.role)
+              const initials = getPseudonymInitials(pseudonym)
+              const color = getUserColor(user.id)
+              
+              return (
+                <div
+                  key={user.id}
+                  className="p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center justify-between"
                 >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Gestionar Atributos
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10" style={{ backgroundColor: color }}>
+                      <AvatarFallback className="text-white text-sm font-semibold" style={{ backgroundColor: color }}>
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">
+                          {pseudonym}
+                        </span>
+                        {getRoleBadge(user.role)}
+                        {user.status !== 'active' && (
+                          <Badge variant="destructive">Inactivo</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {user.department || 'Sin departamento'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleManageAttributes(user)}
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Gestionar Atributos
+                  </Button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

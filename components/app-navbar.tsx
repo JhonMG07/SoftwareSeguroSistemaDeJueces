@@ -9,14 +9,24 @@ export async function AppNavbar() {
 
   if (!user) return null;
 
-  // Obtener nombre del usuario
+  // Obtener rol del usuario
   const { data: profile } = await supabase
     .from('users_profile')
-    .select('real_name, email')
+    .select('role')
     .eq('id', user.id)
     .single();
 
-  const displayName = profile?.real_name || profile?.email || user.email;
+  const getRoleDisplayName = (role?: string) => {
+    switch (role) {
+      case 'judge': return 'Juez';
+      case 'secretary': return 'Secretario';
+      case 'auditor': return 'Auditor';
+      case 'super_admin': return 'Administrador';
+      default: return 'Usuario';
+    }
+  };
+
+  const displayName = getRoleDisplayName(profile?.role);
 
   return (
     <header className="border-b bg-white dark:bg-slate-950 shadow-sm sticky top-0 z-50">

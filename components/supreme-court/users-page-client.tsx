@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { UserList } from "@/components/supreme-court/user-list"
 import { UserFormDialog } from "@/components/supreme-court/user-form-dialog"
+import { CredentialDialog } from "@/components/supreme-court/credential-dialog"
 import { ArrowLeft } from "lucide-react"
 import type { SystemUser, CreateUserForm } from "@/lib/types/supreme-court"
-import { DEFAULT_ABAC_ATTRIBUTES } from "@/lib/data/abac-attributes"
 import { toast } from "sonner"
 
 // Tipo para usuario en lista (sin datos sensibles)
@@ -37,6 +37,10 @@ export function UsersPageClient({ initialUsers, currentUserName }: UsersPageClie
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null)
 
+  // Estados para credenciales
+  const [showCredentials, setShowCredentials] = useState(false)
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string, password?: string } | null>(null)
+
   const refreshUsers = () => {
     router.refresh()
   }
@@ -48,15 +52,25 @@ export function UsersPageClient({ initialUsers, currentUserName }: UsersPageClie
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
-      
+
       const result = await res.json()
-      
+
       if (!res.ok) {
         throw new Error(result.error || 'Error al crear usuario')
       }
 
       toast.success('Usuario creado exitosamente')
       setIsDialogOpen(false)
+
+      // Mostrar credenciales
+      if (result.user && result.user.tempPassword) {
+        setCreatedCredentials({
+          email: result.user.email,
+          password: result.user.tempPassword
+        })
+        setShowCredentials(true)
+      }
+
       refreshUsers()
     } catch (error: any) {
       toast.error(error.message || 'Error al crear usuario')
@@ -67,13 +81,13 @@ export function UsersPageClient({ initialUsers, currentUserName }: UsersPageClie
     try {
       // Cargar datos completos del usuario (descencriptados) desde la API
       const res = await fetch(`/api/admin/users/${user.id}`)
-      
+
       if (!res.ok) {
         throw new Error('Error al cargar datos del usuario')
       }
 
       const { user: fullUser } = await res.json()
-      
+
       setEditingUser(fullUser)
       setIsDialogOpen(true)
     } catch (error: any) {
@@ -107,7 +121,7 @@ export function UsersPageClient({ initialUsers, currentUserName }: UsersPageClie
 
   const handleToggleStatus = async (userId: string, currentStatus: 'active' | 'inactive' | 'suspended') => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
-    
+
     try {
       const res = await fetch(`/api/admin/users/${userId}/status`, {
         method: 'PATCH',
@@ -166,7 +180,7 @@ export function UsersPageClient({ initialUsers, currentUserName }: UsersPageClie
         />
       </main>
 
-      {/* Dialog */}
+      {/* Dialogs */}
       <UserFormDialog
         open={isDialogOpen}
         onClose={() => {
@@ -175,6 +189,12 @@ export function UsersPageClient({ initialUsers, currentUserName }: UsersPageClie
         }}
         onSubmit={editingUser ? handleUpdateUser : handleCreateUser}
         editUser={editingUser}
+      />
+
+      <CredentialDialog
+        open={showCredentials}
+        onClose={() => setShowCredentials(false)}
+        credentials={createdCredentials}
       />
     </>
   )

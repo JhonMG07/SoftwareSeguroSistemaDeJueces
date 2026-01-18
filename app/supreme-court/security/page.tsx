@@ -31,18 +31,25 @@ async function getAttributes(): Promise<ABACAttribute[]> {
 async function getCurrentUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   if (!user) {
     redirect('/sign-in')
   }
 
   const { data: profile } = await supabaseAdmin
     .from('users_profile')
-    .select('real_name')
+    .select('role')
     .eq('id', user.id)
     .single()
 
-  return profile?.real_name || 'Usuario'
+  const role = profile?.role;
+  switch (role) {
+    case 'judge': return 'Juez';
+    case 'secretary': return 'Secretario';
+    case 'auditor': return 'Auditor';
+    case 'super_admin': return 'Administrador';
+    default: return 'Usuario';
+  }
 }
 
 async function SecurityContent() {

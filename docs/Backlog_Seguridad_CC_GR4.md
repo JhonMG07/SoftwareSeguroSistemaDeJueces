@@ -1,18 +1,18 @@
-<div align="center">
-<strong>ESCUELA POLITÉCNICA NACIONAL</strong><br><br>
-<strong>DESARROLLO DE SOFTWARE SEGURO</strong><br><br>
-<strong>INFORME: BACKLOG DE REQUERIMIENTOS (COMMON CRITERIA)</strong><br><br>
-<strong>GRUPO 4</strong><br><br>
-<strong>INTEGRANTES:</strong><br>
-JHON MEZA<br>
-DAMARYS OÑA<br>
-STUART PALMA<br>
-JUAN JOSÉ PROAÑO<br><br>
-<strong>FECHA:</strong> 17/1/2026<br><br>
-<strong>PhD. Jhonattan Barriga</strong>
-</div>
+**ESCUELA POLITÉCNICA NACIONAL**
+**DESARROLLO DE SOFTWARE SEGURO**
+**INFORME: ÍNDICE DE ENTREGABLES DEL PROYECTO**
+**GRUPO 4**
 
-<div style="page-break-after: always;"></div>
+**INTEGRANTES:**
+* JHON MEZA
+* DAMARYS OÑA
+* STUART PALMA
+* JUAN JOSÉ PROAÑO
+
+**FECHA:** 17/1/2026
+**PhD. Jhonattan Barriga**
+
+---
 
 # Backlog de Requerimientos de Seguridad (Common Criteria Part 2)
 

@@ -192,8 +192,8 @@ export async function middleware(request: NextRequest) {
     // Para rutas públicas o login que no tienen usuario autenticado
     const ip = request.headers.get('x-forwarded-for') || 'unknown-ip';
     const globalRateLimitKey = `ip:${ip}`;
-    // Límite más estricto para IPs anónimas (ej. 100 req/min)
-    if (!checkRateLimit(globalRateLimitKey, 100)) {
+    // Límite más estricto para IPs anónimas (ej. 50 req/min)
+    if (!checkRateLimit(globalRateLimitKey, 50)) {
         return NextResponse.json(
             { error: 'Too many requests from your IP' },
             { status: 429 }

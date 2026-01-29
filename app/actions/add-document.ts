@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 export async function addDocumentAction(caseId: string, formData: FormData) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
     if (!user) {
         throw new Error('No autenticado');
@@ -26,6 +27,9 @@ export async function addDocumentAction(caseId: string, formData: FormData) {
 
     if (!file) {
         throw new Error('Archivo requerido');
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+        throw new Error('El archivo debe ser menor o igual a 2 MB');
     }
 
     // Subir archivo

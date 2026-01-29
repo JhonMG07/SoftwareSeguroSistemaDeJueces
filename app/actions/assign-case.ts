@@ -87,7 +87,7 @@ export async function assignJudgeAction(caseId: string) {
         // 6. Enviar Email
         await resend.emails.send({
             from: 'Sistema de Jueces <onboarding@resend.dev>',
-            to: 'juanjobabu@gmail.com', // Demo email
+            to: 'juanjobabu@gmail.com', 
             subject: `Nuevo Caso Asignado: ${caseData.title}`,
             html: `
         <h1>Nuevo Caso Asignado</h1>

@@ -23,12 +23,19 @@ interface AddDocumentDialogProps {
 
 export function AddDocumentDialog({ caseId, open, onOpenChange }: AddDocumentDialogProps) {
     const [loading, setLoading] = useState(false);
+    const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setLoading(true);
 
         const formData = new FormData(event.currentTarget);
+        const file = formData.get('file') as File | null;
+        if (file && file.size > MAX_FILE_SIZE_BYTES) {
+            toast.error('El archivo debe ser menor o igual a 2 MB');
+            setLoading(false);
+            return;
+        }
         try {
             await addDocumentAction(caseId, formData);
             toast.success('Documento agregado exitosamente');
